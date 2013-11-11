@@ -409,6 +409,10 @@ func Log(src, src2, dst *IplImage) {
 }
 //CVAPI(void) cvLog( const CvArr* src, CvArr* dst);
 
+func Min(src, src2, output *IplImage){
+	C.cvMin(unsafe.Pointer(src), unsafe.Pointer(src2), unsafe.Pointer(output))
+}
+//CVAPI(void) cvMin( const CvArr* src1, const CvArr* src2, CvArr* dst );)
 
 /****************************************************************************************\
 *                                Matrix operations                            *
@@ -434,13 +438,18 @@ func Log(src, src2, dst *IplImage) {
 \****************************************************************************************/
 
 
+/****************************************************************************************\
+*                                            Contours                          *
+\****************************************************************************************/
+
+
 
 /****************************************************************************************\
 *                                     Drawing                                 *
 \****************************************************************************************/
 
 /* Draws 4-connected, 8-connected or antialiased line segment connecting two points */
-//color Scalar, 
+//color Scalar,
 func Line(image *IplImage, pt1, pt2 Point, color Scalar, thickness, line_type, shift int) {
 	C.cvLine(
 		unsafe.Pointer(image),
@@ -465,10 +474,3 @@ func Line(image *IplImage, pt1, pt2 Point, color Scalar, thickness, line_type, s
 /****************************************************************************************\
 *                                    Data Persistence                         *
 \****************************************************************************************/
-
-
-
-
-
-
-
