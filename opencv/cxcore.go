@@ -479,8 +479,18 @@ func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
 	int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
 	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
-func DrawContours(img *IplImage, con Contours, extC Scalar, holeC Scalar, maxLevel int, thickness int, lineType int, offset Point){
-	C.cvDrawContours(unsafe.Pointer(img), con.seq, C.CvScalar(extC), C.CvScalar(holeC),
+func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Scalar, thickness int, lineType int, offset Point){
+	var startPtr uintptr
+	if index > -1 {
+		startPtr = uintptr(unsafe.Pointer(con.seq)) + con.headerSize * uintptr(index)
+		maxLevel = 0
+	} else {
+		startPtr = uintptr(unsafe.Pointer(con.seq))
+		maxLevel = CV_FILLED
+	}
+	var contourPtr *C.CvSeq
+	contourPtr = (*C.CvSeq)(unsafe.Pointer(startPtr))
+	C.cvDrawContours(unsafe.Pointer(img), contourPtr, C.CvScalar(extC), C.CvScalar(holeC),
 		C.int(maxLevel), C.int(thickness), C.int(lineType),
 		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
 }
