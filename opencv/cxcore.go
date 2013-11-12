@@ -519,11 +519,14 @@ func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Sca
 	int line_type CV_DEFAULT(8),
 	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
-func ContourArea(con *Contour)float64{
+func ContourArea(con Contours, index int)float64{
+	// Get pointer to CvContour in CvSeq
+	p := (*C.CvContour)(unsafe.Pointer(con.seq.GetSeqElem(index)))
+	// Create default slice which is whole contour
 	var whole Slice
 	whole.start_index = 0
 	whole.end_index = CV_WHOLE_SEQ_END_INDEX
-	area := C.cvContourArea(unsafe.Pointer(&con), C.CvSlice(whole), 0)
+	area := C.cvContourArea(unsafe.Pointer(&p), C.CvSlice(whole), 0)
 	return float64(area)
 }
 
