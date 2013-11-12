@@ -582,7 +582,7 @@ type Point struct {
 }
 
 func MinMaxLoc(img, mask *IplImage)(min, max float64, minxy, maxxy Point) {
-	C.cvMinMaxLoc(unsafe.Pointer(img), 
+	C.cvMinMaxLoc(unsafe.Pointer(img),
 		(*C.double)(&min), (*C.double)(&max),
 		(*C.CvPoint)(unsafe.Pointer(&minxy)),(*C.CvPoint)(unsafe.Pointer(&maxxy)),
 		unsafe.Pointer(mask))
@@ -678,7 +678,15 @@ type Graph      C.CvGraph
 
 type Chain   C.CvChain
 type Contour C.CvContour
+const (
+	CV_RETR_LIST = C.CV_RETR_LIST
+	CV_RETR_EXTERNAL = C.CV_RETR_EXTERNAL
 
+	CV_CHAIN_APPROX_SIMPLE = C.CV_CHAIN_APPROX_SIMPLE
+	CV_CHAIN_APPROX_NONE = C.CV_CHAIN_APPROX_NONE
+
+	CV_FILLED = C.CV_FILLED
+)
 /****************************************************************************************\
 *                                    Sequence types                                      *
 \****************************************************************************************/
@@ -715,4 +723,3 @@ type AttrList C.CvAttrList
 /*****************************************************************************\
 *                                 --- END ---                                 *
 \*****************************************************************************/
-

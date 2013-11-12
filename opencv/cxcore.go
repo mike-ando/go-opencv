@@ -441,8 +441,43 @@ func Min(src, src2, output *IplImage){
 /****************************************************************************************\
 *                                            Contours                          *
 \****************************************************************************************/
+//
+type Contours struct {
+	mem *C.CvMemStorage
+	seq *C.CvSeq
+	headerSize uintptr
+}
 
+func (c *Contours)Release(){
+	C.cvClearMemStorage(c.mem)
+	C.cvReleaseMemStorage(&c.mem)
+}
 
+func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
+	var con Contours
+	con.mem = C.cvCreateMemStorage(0)
+	var testContour C.CvContour // Creating solely to get the size of it
+	con.headerSize = unsafe.Sizeof(testContour)
+	C.cvFindContours(unsafe.Pointer(img), con.mem, &con.seq,
+		C.int(con.headerSize), C.int(mode), C.int(method), C.cvPoint(C.int(offset.X), C.int(offset.Y)))
+	return con
+}
+
+/*CVAPI(int)  cvFindContours( CvArr* image, CvMemStorage* storage, CvSeq** first_contour,
+	int header_size CV_DEFAULT(sizeof(CvContour)),
+	int mode CV_DEFAULT(CV_RETR_LIST),
+	int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
+	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
+
+func DrawContours(img *IplImage, con Contours, extC Scalar, holeC Scalar, maxLevel int, thickness int, lineType int, offset Point){
+	C.cvDrawContours(unsafe.Pointer(img), con.seq, C.CvScalar(extC), C.CvScalar(holeC), C.int(maxLevel), C.int(thickness), C.int(lineType), C.cvPoint(C.int(offset.X), C.int(offset.Y)))
+}
+
+/*CVAPI(void)  cvDrawContours( CvArr *img, CvSeq* contour,
+	CvScalar external_color, CvScalar hole_color,
+	int max_level, int thickness CV_DEFAULT(1),
+	int line_type CV_DEFAULT(8),
+	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
 /****************************************************************************************\
 *                                     Drawing                                 *
