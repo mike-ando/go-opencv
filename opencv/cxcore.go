@@ -449,7 +449,8 @@ func Min(src, src2, output *IplImage){
 /****************************************************************************************\
 *                                            Contours                          *
 \****************************************************************************************/
-//
+// Contours wraps the memory allocation of CvSeq and the pointer
+// length used for storing and walking through arrays of CvContour
 type Contours struct {
 	mem *C.CvMemStorage
 	seq *C.CvSeq
@@ -461,12 +462,21 @@ func (c *Contours)Release(){
 	C.cvReleaseMemStorage(&c.mem)
 }
 
-// Finds the contours of an 8-bit imaging. WARNING: will modify image used to find contours!
-func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
+// NewContours initializes an empty Contours structure
+func NewContours()Contours{
+	// Create contours by allocating memory through C for CvSeq
 	var con Contours
 	con.mem = C.cvCreateMemStorage(0)
 	var testContour C.CvContour // Creating solely to get the size of it
 	con.headerSize = unsafe.Sizeof(testContour)
+	return con
+}
+
+// FindContours creates a list of the contours in an 8-bit
+// image. WARNING: will modify image used to find contours!
+func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
+	con := NewContours()
+	// Call C function which modifies CvSeq in place
 	C.cvFindContours(unsafe.Pointer(img), con.mem, &con.seq,
 		C.int(con.headerSize), C.int(mode), C.int(method),
 		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
@@ -479,17 +489,25 @@ func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
 	int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
 	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
+// DrawContours can draw one or all of the contours found
 func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Scalar, thickness int, lineType int, offset Point){
+	// Pointer arithmatic necessary to get index on CvSeq used for
+	// contours.  Negative values will draw all (including
+	// interior) contours while positive values will only draw the
+	// indexed contours.
 	var startPtr uintptr
+	var maxLevel int
 	if index > -1 {
 		startPtr = uintptr(unsafe.Pointer(con.seq)) + con.headerSize * uintptr(index)
 		maxLevel = 0
 	} else {
 		startPtr = uintptr(unsafe.Pointer(con.seq))
-		maxLevel = CV_FILLED
+		maxLevel =1
 	}
+	// Cast pointer back to appropriate CvSeq pointer
 	var contourPtr *C.CvSeq
 	contourPtr = (*C.CvSeq)(unsafe.Pointer(startPtr))
+	// Call C function which modifies image in place
 	C.cvDrawContours(unsafe.Pointer(img), contourPtr, C.CvScalar(extC), C.CvScalar(holeC),
 		C.int(maxLevel), C.int(thickness), C.int(lineType),
 		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
