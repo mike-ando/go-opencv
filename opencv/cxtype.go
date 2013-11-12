@@ -706,6 +706,23 @@ type SeqReader C.CvSeqReader
 /*                                Operations on sequences                               */
 /****************************************************************************************/
 
+func (s *Seq) RawPtr()(*C.CvSeq){
+	return (*C.CvSeq)(unsafe.Pointer(s))
+}
+
+func (s *Seq) RefRawPtr()(**C.CvSeq){
+	ptr := (*C.CvSeq)(unsafe.Pointer(s))
+	return &ptr
+}
+
+// GetSeqElem retrieves the pointer to the specified index
+func (s *Seq) GetSeqElem(index int)(*Seq){
+	var ptr *C.schar
+	ptr = C.cvGetSeqElem((*C.CvSeq)(s), C.int(index))
+	return (*Seq)(unsafe.Pointer(ptr))
+}
+//CVAPI(schar*)  cvGetSeqElem( const CvSeq* seq, int index );
+
 /****************************************************************************************\
 *             Data structures for persistence (a.k.a serialization) functionality        *
 \****************************************************************************************/

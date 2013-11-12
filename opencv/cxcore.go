@@ -453,7 +453,7 @@ func Min(src, src2, output *IplImage){
 // length used for storing and walking through arrays of CvContour
 type Contours struct {
 	mem *C.CvMemStorage
-	seq *C.CvSeq
+	seq *Seq
 	headerSize uintptr
 }
 
@@ -477,7 +477,7 @@ func NewContours()Contours{
 func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
 	con := NewContours()
 	// Call C function which modifies CvSeq in place
-	C.cvFindContours(unsafe.Pointer(img), con.mem, &con.seq,
+	C.cvFindContours(unsafe.Pointer(img), con.mem, con.seq.RefRawPtr(),
 		C.int(con.headerSize), C.int(mode), C.int(method),
 		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
 	return con
@@ -518,6 +518,18 @@ func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Sca
 	int max_level, int thickness CV_DEFAULT(1),
 	int line_type CV_DEFAULT(8),
 	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
+
+func ContourArea(con *Contour)float64{
+	var whole Slice
+	whole.start_index = 0
+	whole.end_index = CV_WHOLE_SEQ_END_INDEX
+	area := C.cvContourArea(unsafe.Pointer(&con), C.CvSlice(whole), 0)
+	return float64(area)
+}
+
+/*CVAPI(double)  cvContourArea( const CvArr* contour,
+	CvSlice slice CV_DEFAULT(CV_WHOLE_SEQ),
+	int oriented CV_DEFAULT(0));*/
 
 /****************************************************************************************\
 *                                     Drawing                                 *
