@@ -462,6 +462,17 @@ func (c *Contours)Release(){
 	C.cvReleaseMemStorage(&c.mem)
 }
 
+func (c *Contours)Elem(index int)(*Contour){
+	ptr := c.seq.getSeqElem(index)
+	return (*Contour)(unsafe.Pointer(ptr))
+}
+
+func (c *Contours)RawElem(index int)(*C.CvContour){
+	ptr := c.seq.getSeqElem(index)
+	return (*C.CvContour)(unsafe.Pointer(ptr))
+}
+
+
 // NewContours initializes an empty Contours structure
 func NewContours()Contours{
 	// Create contours by allocating memory through C for CvSeq
@@ -521,7 +532,7 @@ func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Sca
 
 func ContourArea(con Contours, index int)float64{
 	// Get pointer to CvContour in CvSeq
-	p := (*C.CvContour)(unsafe.Pointer(con.seq.GetSeqElem(index)))
+	p := con.RawElem(index)
 	// Create default slice which is whole contour
 	var whole Slice
 	whole.start_index = 0

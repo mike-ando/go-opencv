@@ -716,10 +716,10 @@ func (s *Seq) RefRawPtr()(**C.CvSeq){
 }
 
 // GetSeqElem retrieves the pointer to the specified index
-func (s *Seq) GetSeqElem(index int)(*Seq){
+func (s *Seq) getSeqElem(index int)(*C.schar){
 	var ptr *C.schar
 	ptr = C.cvGetSeqElem((*C.CvSeq)(s), C.int(index))
-	return (*Seq)(unsafe.Pointer(ptr))
+	return ptr
 }
 //CVAPI(schar*)  cvGetSeqElem( const CvSeq* seq, int index );
 
