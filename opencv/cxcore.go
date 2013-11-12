@@ -404,7 +404,7 @@ func Divide(src, src2, dst *IplImage, scale float64) {
 }
 //CVAPI(void) cvDiv( const CvArr* src, const CvArr* src2, CvArr* dst, scale double);
 
-func Scale(src, dest *IplImage, scale, shift float64){
+func ConvertScale(src, dest *IplImage, scale, shift float64){
 	C.cvConvertScale(unsafe.Pointer(src), unsafe.Pointer(dest), C.double(scale), C.double(shift))
 }
 
@@ -461,13 +461,15 @@ func (c *Contours)Release(){
 	C.cvReleaseMemStorage(&c.mem)
 }
 
+// Finds the contours of an 8-bit imaging. WARNING: will modify image used to find contours!
 func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
 	var con Contours
 	con.mem = C.cvCreateMemStorage(0)
 	var testContour C.CvContour // Creating solely to get the size of it
 	con.headerSize = unsafe.Sizeof(testContour)
 	C.cvFindContours(unsafe.Pointer(img), con.mem, &con.seq,
-		C.int(con.headerSize), C.int(mode), C.int(method), C.cvPoint(C.int(offset.X), C.int(offset.Y)))
+		C.int(con.headerSize), C.int(mode), C.int(method),
+		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
 	return con
 }
 
@@ -478,7 +480,9 @@ func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
 	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
 func DrawContours(img *IplImage, con Contours, extC Scalar, holeC Scalar, maxLevel int, thickness int, lineType int, offset Point){
-	C.cvDrawContours(unsafe.Pointer(img), con.seq, C.CvScalar(extC), C.CvScalar(holeC), C.int(maxLevel), C.int(thickness), C.int(lineType), C.cvPoint(C.int(offset.X), C.int(offset.Y)))
+	C.cvDrawContours(unsafe.Pointer(img), con.seq, C.CvScalar(extC), C.CvScalar(holeC),
+		C.int(maxLevel), C.int(thickness), C.int(lineType),
+		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
 }
 
 /*CVAPI(void)  cvDrawContours( CvArr *img, CvSeq* contour,
