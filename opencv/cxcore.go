@@ -404,6 +404,14 @@ func Divide(src, src2, dst *IplImage, scale float64) {
 }
 //CVAPI(void) cvDiv( const CvArr* src, const CvArr* src2, CvArr* dst, scale double);
 
+func Scale(src, dest *IplImage, scale, shift float64){
+	C.cvConvertScale(unsafe.Pointer(src), unsafe.Pointer(dest), C.double(scale), C.double(shift))
+}
+
+/*CVAPI(void)  cvConvertScale( const CvArr* src, CvArr* dst,
+	double scale CV_DEFAULT(1),
+	double shift CV_DEFAULT(0) );*/
+
 func Log(src, src2, dst *IplImage) {
 	C.cvLog(unsafe.Pointer(src), unsafe.Pointer(dst))
 }
