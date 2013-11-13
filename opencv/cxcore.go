@@ -10,6 +10,7 @@ package opencv
 //#cgo windows LDFLAGS: -lopencv_core242.dll -lopencv_imgproc242.dll -lopencv_photo242.dll -lopencv_highgui242.dll -lstdc++
 import "C"
 import (
+	//"fmt"
 	//"errors"
 	"unsafe"
 )
@@ -475,13 +476,8 @@ func (c *Contours)RawElem(index int)(*C.CvContour){
 // NewContours initializes an empty Contours structure
 func NewContours()Contours{
 	// Create contours by allocating memory through C for CvSeq
-	var con Contours
-	con.mem = C.cvCreateMemStorage(0)
-	var dummySeq C.struct_CvSeq
-	var dummyCon C.CvPoint2DSeq
-	con.seq = createSeq(0, unsafe.Sizeof(dummySeq), unsafe.Sizeof(dummyCon), con.mem)
-	con.elemSize = unsafe.Sizeof(dummyCon)
-	return con
+	mem := C.cvCreateMemStorage(0)
+	return Contours{mem, createSeq(0, unsafe.Sizeof(C.struct_CvSeq{}), unsafe.Sizeof(C.CvPoint2DSeq{}), mem),  unsafe.Sizeof(C.CvPoint2DSeq{})}
 }
 
 // FindContours creates a list of the contours in an 8-bit
@@ -501,27 +497,22 @@ func FindContours(img *IplImage,mode int, method int, offset Point )(Contours,in
 	int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
 	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
-// DrawContours can draw one or all of the contours found
-func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Scalar, thickness int, lineType int, offset Point){
-	// NOT WORKING. Need to figure out how to walk to indexed contour.
-	// Pointer arithmatic necessary to get index on CvSeq used for
-	// contours.  Negative values will draw all (including
-	// interior) contours while positive values will only draw the
-	// indexed contours.
-	var startPtr uintptr
-	var maxLevel int
-	if index > -1 {
-		startPtr = uintptr(unsafe.Pointer(con.seq)) + uintptr(con.elemSize) * uintptr(index)
-		maxLevel = 0
-	} else {
-		startPtr = uintptr(unsafe.Pointer(con.seq))
-		maxLevel = 1
-	}
-	// Cast pointer back to appropriate CvSeq pointer
-	var contourPtr *C.CvSeq
-	contourPtr = (*C.CvSeq)(unsafe.Pointer(startPtr))
+// DrawSingleContour will draw only the indexed contour from a list of contours onto the passed in image
+func DrawSingleContour(img *IplImage, con Contours, index int, extC Scalar, holeC Scalar, thickness int, lineType int, offset Point){
+	// Set to draw single contour and get appropriately indexed
+	// starting pointer
+	maxLevel := 0
+	contourPtr := (*C.CvSeq)(unsafe.Pointer(getSeqElem(con.seq, index)))
 	// Call C function which modifies image in place
 	C.cvDrawContours(unsafe.Pointer(img), contourPtr, C.CvScalar(extC), C.CvScalar(holeC),
+		C.int(maxLevel), C.int(thickness), C.int(lineType),
+		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
+}
+
+// DrawContours will draw all contours onto passed in image
+func DrawContours(img *IplImage, con Contours, extC Scalar, holeC Scalar,maxLevel int, thickness int, lineType int, offset Point){
+	// Call C function which modifies image in place
+	C.cvDrawContours(unsafe.Pointer(img), con.seq, C.CvScalar(extC), C.CvScalar(holeC),
 		C.int(maxLevel), C.int(thickness), C.int(lineType),
 		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
 }
@@ -535,22 +526,14 @@ func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Sca
 
 func ContourArea(con Contours, index int)float64{
 	// Get pointer to CvContour in CvSeq
-	//p := con.RawElem(index)
-	/*startPtr := uintptr(unsafe.Pointer(con.seq)) + uintptr(con.elemSize) * uintptr(index)
-	var contourPtr *C.CvContour
-	contourPtr = (*C.CvContour)(unsafe.Pointer(startPtr))*/
-	var cur *C.struct_CvSeq
-	cur = con.seq.h_next
-	for i:=0; i<index; i++{
-		cur = cur.h_next
-	}
-
+	cur := getSeqElem(con.seq, index)
 	// Create default slice which is whole contour
 	var whole C.CvSlice
 	whole.start_index = 0
 	whole.end_index = CV_WHOLE_SEQ_END_INDEX
 	area := C.cvContourArea(unsafe.Pointer(cur), whole, 0)
 	return float64(area)
+
 }
 
 
