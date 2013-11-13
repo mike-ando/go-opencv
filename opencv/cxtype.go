@@ -662,6 +662,16 @@ type MemStoragePos C.CvMemStoragePos
 type SeqBlock C.CvSeqBlock
 type Seq      C.CvSeq
 
+
+
+func createSeq(seqFlags int, headerSize, elemSize uintptr, storage *C.CvMemStorage)(*C.CvSeq){
+	ptr := C.cvCreateSeq(C.int(seqFlags), C.size_t(headerSize), C.size_t(elemSize), storage)
+	return ptr
+}
+
+/*CVAPI(CvSeq*)  cvCreateSeq( int seq_flags, size_t header_size,
+	size_t elem_size, CvMemStorage* storage );*/
+
 /*************************************** Set ********************************************/
 
 type Set C.CvSet

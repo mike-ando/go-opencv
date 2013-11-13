@@ -453,45 +453,46 @@ func Min(src, src2, output *IplImage){
 // length used for storing and walking through arrays of CvContour
 type Contours struct {
 	mem *C.CvMemStorage
-	seq *Seq
-	headerSize uintptr
+	seq *C.CvSeq
+	elemSize uintptr
 }
 
 func (c *Contours)Release(){
 	C.cvClearMemStorage(c.mem)
 	C.cvReleaseMemStorage(&c.mem)
 }
-
+/*
 func (c *Contours)Elem(index int)(*Contour){
 	ptr := c.seq.getSeqElem(index)
 	return (*Contour)(unsafe.Pointer(ptr))
 }
-
 func (c *Contours)RawElem(index int)(*C.CvContour){
 	ptr := c.seq.getSeqElem(index)
 	return (*C.CvContour)(unsafe.Pointer(ptr))
 }
-
+*/
 
 // NewContours initializes an empty Contours structure
 func NewContours()Contours{
 	// Create contours by allocating memory through C for CvSeq
 	var con Contours
 	con.mem = C.cvCreateMemStorage(0)
-	var testContour C.CvContour // Creating solely to get the size of it
-	con.headerSize = unsafe.Sizeof(testContour)
+	var dummySeq C.struct_CvSeq
+	var dummyCon C.CvPoint2DSeq
+	con.seq = createSeq(0, unsafe.Sizeof(dummySeq), unsafe.Sizeof(dummyCon), con.mem)
+	con.elemSize = unsafe.Sizeof(dummyCon)
 	return con
 }
 
 // FindContours creates a list of the contours in an 8-bit
 // image. WARNING: will modify image used to find contours!
-func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
+func FindContours(img *IplImage,mode int, method int, offset Point )(Contours,int){
 	con := NewContours()
 	// Call C function which modifies CvSeq in place
-	C.cvFindContours(unsafe.Pointer(img), con.mem, con.seq.RefRawPtr(),
-		C.int(con.headerSize), C.int(mode), C.int(method),
+	numFound := C.cvFindContours(unsafe.Pointer(img), con.mem, &con.seq,
+		C.int(con.elemSize), C.int(mode), C.int(method),
 		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
-	return con
+	return con, int(numFound)
 }
 
 /*CVAPI(int)  cvFindContours( CvArr* image, CvMemStorage* storage, CvSeq** first_contour,
@@ -502,6 +503,7 @@ func FindContours(img *IplImage,mode int, method int, offset Point )Contours{
 
 // DrawContours can draw one or all of the contours found
 func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Scalar, thickness int, lineType int, offset Point){
+	// NOT WORKING. Need to figure out how to walk to indexed contour.
 	// Pointer arithmatic necessary to get index on CvSeq used for
 	// contours.  Negative values will draw all (including
 	// interior) contours while positive values will only draw the
@@ -509,11 +511,11 @@ func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Sca
 	var startPtr uintptr
 	var maxLevel int
 	if index > -1 {
-		startPtr = uintptr(unsafe.Pointer(con.seq)) + con.headerSize * uintptr(index)
+		startPtr = uintptr(unsafe.Pointer(con.seq)) + uintptr(con.elemSize) * uintptr(index)
 		maxLevel = 0
 	} else {
 		startPtr = uintptr(unsafe.Pointer(con.seq))
-		maxLevel =1
+		maxLevel = 1
 	}
 	// Cast pointer back to appropriate CvSeq pointer
 	var contourPtr *C.CvSeq
@@ -530,16 +532,27 @@ func DrawContours(img *IplImage, con Contours, index int, extC Scalar, holeC Sca
 	int line_type CV_DEFAULT(8),
 	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
+
 func ContourArea(con Contours, index int)float64{
 	// Get pointer to CvContour in CvSeq
-	p := con.RawElem(index)
+	//p := con.RawElem(index)
+	/*startPtr := uintptr(unsafe.Pointer(con.seq)) + uintptr(con.elemSize) * uintptr(index)
+	var contourPtr *C.CvContour
+	contourPtr = (*C.CvContour)(unsafe.Pointer(startPtr))*/
+	var cur *C.struct_CvSeq
+	cur = con.seq.h_next
+	for i:=0; i<index; i++{
+		cur = cur.h_next
+	}
+
 	// Create default slice which is whole contour
-	var whole Slice
+	var whole C.CvSlice
 	whole.start_index = 0
 	whole.end_index = CV_WHOLE_SEQ_END_INDEX
-	area := C.cvContourArea(unsafe.Pointer(&p), C.CvSlice(whole), 0)
+	area := C.cvContourArea(unsafe.Pointer(cur), whole, 0)
 	return float64(area)
 }
+
 
 /*CVAPI(double)  cvContourArea( const CvArr* contour,
 	CvSlice slice CV_DEFAULT(CV_WHOLE_SEQ),
