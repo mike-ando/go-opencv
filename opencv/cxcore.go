@@ -400,6 +400,12 @@ func Add(src, src2, dst, mask *IplImage) {
 }
 //CVAPI(void) cvAdd( const CvArr* src, const CvArr* src2, CvArr* dst, CvArr* mask);
 
+func Sub(src, src2, dst, mask *IplImage){
+	C.cvSub(unsafe.Pointer(src), unsafe.Pointer(src2), unsafe.Pointer(dst), unsafe.Pointer(mask))
+}
+
+//CVAPI(void)  cvSub( const CvArr* src1, const CvArr* src2, CvArr* dst, const CvArr* mask CV_DEFAULT(NULL));
+
 func Divide(src, src2, dst *IplImage, scale float64) {
 	C.cvDiv(unsafe.Pointer(src), unsafe.Pointer(src2),  unsafe.Pointer(dst), C.double(scale))
 }
@@ -426,8 +432,6 @@ func Min(src, src2, output *IplImage){
 /****************************************************************************************\
 *                                Matrix operations                            *
 \****************************************************************************************/
-
-
 
 /****************************************************************************************\
 *                                    Array Statistics                         *
@@ -462,16 +466,6 @@ func (c *Contours)Release(){
 	C.cvClearMemStorage(c.mem)
 	C.cvReleaseMemStorage(&c.mem)
 }
-/*
-func (c *Contours)Elem(index int)(*Contour){
-	ptr := c.seq.getSeqElem(index)
-	return (*Contour)(unsafe.Pointer(ptr))
-}
-func (c *Contours)RawElem(index int)(*C.CvContour){
-	ptr := c.seq.getSeqElem(index)
-	return (*C.CvContour)(unsafe.Pointer(ptr))
-}
-*/
 
 // NewContours initializes an empty Contours structure
 func NewContours()Contours{

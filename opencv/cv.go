@@ -21,17 +21,19 @@ func init() {
 
 const (
 	CV_BGR2GRAY = C.CV_BGR2GRAY
-
-	CV_BLUR = C.CV_BLUR
 )
 
 func PhaseCorrelate() {
 	C.cvPhaseCorrelate();
 }
 
-	
-//  int cvFindContours(CvArr* image, CvMemStorage* storage, CvSeq** first_contour, int header_size=sizeof(CvContour), // int mode=CV_RETR_LIST, int method=CV_CHAIN_APPROX_SIMPLE, CvPoint offset=cvPoint(0,0) )
 
+const (
+	CV_BLUR = C.CV_BLUR
+	CV_BLUR_NO_SCALE = C.CV_BLUR_NO_SCALE
+	CV_GAUSSIAN = C.CV_GAUSSIAN
+	CV_MEDIAN = C.CV_MEDIAN
+)
 /* Smoothes array (removes noise) */
 func Smooth(src, dst *IplImage, smoothtype,
 	param1, param2 int, param3, param4 float64) {
@@ -45,6 +47,15 @@ func Smooth(src, dst *IplImage, smoothtype,
 //                      int param2 CV_DEFAULT(0),
 //                      double param3 CV_DEFAULT(0),
 //                      double param4 CV_DEFAULT(0));
+
+
+func Laplace(src *IplImage, dst *IplImage, aperature int){
+	C.cvLaplace(unsafe.Pointer(src), unsafe.Pointer(dst), C.int(aperature))
+}
+
+/*CV_IMPL void
+cvLaplace( const void* srcarr, void* dstarr, int aperture_size )*/
+
 
 /* Converts input array pixels from one color space to another */
 func CvtColor(src, dst *IplImage, code int) {
@@ -87,6 +98,3 @@ func Inpaint(src, inpaint_mask, dst *IplImage, inpaintRange float64, flags int) 
 }
 //CVAPI(void) cvInpaint( const CvArr* src, const CvArr* inpaint_mask,
 //                       CvArr* dst, double inpaintRange, int flags );
-
-
-
