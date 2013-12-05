@@ -349,6 +349,7 @@ const (
 	/* ?, any color */
 	CV_LOAD_IMAGE_ANYCOLOR  = int(C.CV_LOAD_IMAGE_ANYCOLOR)
 	CV_16UC1  = int(C.CV_16UC1)
+	CV_16SC1  = int(C.CV_16SC1)
 	CV_32FC1  = int(C.CV_32FC1)
 	CV_32SC1  = int(C.CV_32SC1)
 	CV_8UC1  = int(C.CV_8UC1)

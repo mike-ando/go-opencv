@@ -429,6 +429,14 @@ func Min(src, src2, output *IplImage){
 }
 //CVAPI(void) cvMin( const CvArr* src1, const CvArr* src2, CvArr* dst );)
 
+func MeanStdDev(src, mask *IplImage)(m, s [4]float64) {
+	mean,stddev := Scalar{},Scalar{}
+	C.cvAvgSdv(unsafe.Pointer(src), (*C.CvScalar)(&mean), (*C.CvScalar)(&stddev), unsafe.Pointer(mask))
+	for i,x := range(mean.val) {    m[i] = float64(x) }
+	for i,x := range(stddev.val) {  s[i] = float64(x) }
+	return m,s
+}
+
 /****************************************************************************************\
 *                                Matrix operations                            *
 \****************************************************************************************/
@@ -459,6 +467,7 @@ func Min(src, src2, output *IplImage){
 type Contours struct {
 	mem *C.CvMemStorage
 	seq *C.CvSeq
+	elements [](*C.struct_CvSeq)
 	elemSize uintptr
 }
 
@@ -471,19 +480,45 @@ func (c *Contours)Release(){
 func NewContours()Contours{
 	// Create contours by allocating memory through C for CvSeq
 	mem := C.cvCreateMemStorage(0)
-	return Contours{mem, createSeq(0, unsafe.Sizeof(C.struct_CvSeq{}), unsafe.Sizeof(C.CvPoint2DSeq{}), mem),  unsafe.Sizeof(C.CvPoint2DSeq{})}
+	return Contours{mem, createSeq(0, unsafe.Sizeof(C.struct_CvSeq{}), unsafe.Sizeof(C.CvPoint2DSeq{}), mem),
+		[](*C.struct_CvSeq){}, unsafe.Sizeof(C.CvPoint2DSeq{})}
 }
 
 // FindContours creates a list of the contours in an 8-bit
 // image. WARNING: will modify image used to find contours!
-func FindContours(img *IplImage,mode int, method int, offset Point )(Contours,int){
+func FindContours(img *IplImage,mode int, method int, offset *Point )(Contours,int){
 	con := NewContours()
+	pt := C.cvPoint(C.int(0), C.int(0))
+	if offset != nil {
+		pt = C.cvPoint(C.int(offset.X), C.int(offset.Y))
+	}
 	// Call C function which modifies CvSeq in place
 	numFound := C.cvFindContours(unsafe.Pointer(img), con.mem, &con.seq,
-		C.int(con.elemSize), C.int(mode), C.int(method),
-		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
+		C.int(con.elemSize), C.int(mode), C.int(method), pt)
+
+	cur := (*C.struct_CvSeq)(unsafe.Pointer(con.seq))
+	for i:=0; i < int(numFound); i++ {
+		con.elements = append(con.elements, cur)
+		cur = cur.h_next
+	}
+
 	return con, int(numFound)
 }
+
+
+func ConvexityDefects(con Contours, index int) (*Seq, int) {
+	// Get xopointer to CvContour in CvSeq
+	cur := (*C.CvSeq)(unsafe.Pointer(con.elements[index])) //getSeqElem(con.seq, index)
+	seq := C.cvConvexHull2(unsafe.Pointer(cur), unsafe.Pointer(nil), 
+		C.CV_CLOCKWISE, C.int(0))
+	seq2 := (*Seq)(C.cvConvexityDefects(unsafe.Pointer(cur),unsafe.Pointer(seq),
+		(*C.CvMemStorage)(nil)))
+	count := 0
+	tmp := (*C.struct_CvSeq)(unsafe.Pointer(seq2))
+	for ; tmp != nil; tmp=tmp.h_next {	count++ }
+	return seq2,count
+}
+
 
 /*CVAPI(int)  cvFindContours( CvArr* image, CvMemStorage* storage, CvSeq** first_contour,
 	int header_size CV_DEFAULT(sizeof(CvContour)),
@@ -492,15 +527,18 @@ func FindContours(img *IplImage,mode int, method int, offset Point )(Contours,in
 	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
 // DrawSingleContour will draw only the indexed contour from a list of contours onto the passed in image
-func DrawSingleContour(img *IplImage, con Contours, index int, extC Scalar, holeC Scalar, thickness int, lineType int, offset Point){
+func DrawSingleContour(img *IplImage, con Contours, index int, extC Scalar, holeC Scalar, thickness int, lineType int, offset *Point){
 	// Set to draw single contour and get appropriately indexed
 	// starting pointer
+	pt := C.cvPoint(C.int(0), C.int(0))
+	if offset != nil {
+		pt = C.cvPoint(C.int(offset.X), C.int(offset.Y))
+	}
 	maxLevel := 0
-	contourPtr := (*C.CvSeq)(unsafe.Pointer(getSeqElem(con.seq, index)))
+	contourPtr := (*C.CvSeq)(unsafe.Pointer(con.elements[index]))//  getSeqElem(con.seq, index)))
 	// Call C function which modifies image in place
 	C.cvDrawContours(unsafe.Pointer(img), contourPtr, C.CvScalar(extC), C.CvScalar(holeC),
-		C.int(maxLevel), C.int(thickness), C.int(lineType),
-		C.cvPoint(C.int(offset.X), C.int(offset.Y)))
+		C.int(maxLevel), C.int(thickness), C.int(lineType), pt)
 }
 
 // DrawContours will draw all contours onto passed in image
@@ -518,9 +556,9 @@ func DrawContours(img *IplImage, con Contours, extC Scalar, holeC Scalar,maxLeve
 	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
 
-func ContourArea(con Contours, index int)float64{
-	// Get pointer to CvContour in CvSeq
-	cur := getSeqElem(con.seq, index)
+func ContourArea(con Contours, index int) float64 {
+	// Get xopointer to CvContour in CvSeq
+	cur := (*C.CvSeq)(unsafe.Pointer(con.elements[index])) //getSeqElem(con.seq, index)
 	// Create default slice which is whole contour
 	var whole C.CvSlice
 	whole.start_index = 0
@@ -530,10 +568,65 @@ func ContourArea(con Contours, index int)float64{
 
 }
 
-
 /*CVAPI(double)  cvContourArea( const CvArr* contour,
 	CvSlice slice CV_DEFAULT(CV_WHOLE_SEQ),
 	int oriented CV_DEFAULT(0));*/
+
+func ArcLength(con Contours, index int) float64 {
+	// Get xopointer to CvContour in CvSeq
+	cur := (*C.CvSeq)(unsafe.Pointer(con.elements[index])) //getSeqElem(con.seq, index)
+	// Create default slice which is whole contour
+	var whole C.CvSlice
+	whole.start_index = 0
+	whole.end_index = CV_WHOLE_SEQ_END_INDEX
+	length := C.cvArcLength(unsafe.Pointer(cur), whole, -1)
+	return float64(length)
+}
+
+
+
+type CvMoments struct {
+	M00,M10,M01,M20,M11,M02,M30,M21,M12,M03 float64
+	N20,N11,N02,N30,N21,N12,N03,ISM00 float64
+}
+type CvHuMoments struct {	H1,H2,H3,H4,H5,H6,H7 float64 }
+func Moments(src *IplImage, binary int)(m CvMoments, hu CvHuMoments){
+	C.cvMoments(unsafe.Pointer(src),(*C.CvMoments)(unsafe.Pointer(&m)),C.int(binary))
+	C.cvGetHuMoments((*C.CvMoments)(unsafe.Pointer(&m)),(*C.CvHuMoments)(unsafe.Pointer(&hu)))
+	return m,hu;
+}
+
+// cvThreshold(const CvArr* src, CvArr* dst, double threshold, double max_value, int threshold_type)
+
+const (
+	CV_THRESH_BINARY     = int(C.CV_THRESH_BINARY)
+	CV_THRESH_BINARY_INV = int(C.CV_THRESH_BINARY_INV)
+	CV_THRESH_TRUNC      = int(C.CV_THRESH_TRUNC)
+	CV_THRESH_TOZERO     = int(C.CV_THRESH_TOZERO)
+	CV_THRESH_TOZERO_INV = int(C.CV_THRESH_TOZERO_INV)
+)
+
+
+func Threshold(src, dst *IplImage, threshold, max_value float64, threshold_type int) float64{
+	ret := C.cvThreshold(unsafe.Pointer(src), unsafe.Pointer(dst),
+		C.double(threshold), C.double(max_value), C.int(threshold_type))
+	return float64(ret)
+}
+
+/*func AdaptiveThreshold(src, dst cv.IplImage, max_value float64,
+	method, threshold_type, block_size int param1 float64) {
+	cv.AdaptiveThreshold(const CvArr* src, CvArr* dst, double max_value, 
+   int adaptive_method=CV_ADAPTIVE_THRESH_MEAN_C,
+   int threshold_type=CV_THRESH_BINARY,
+   int block_size=3,
+   double param1=5 ) */
+
+
+/* cvAdaptiveThreshold(const CvArr* src, CvArr* dst, double max_value, 
+   int adaptive_method=CV_ADAPTIVE_THRESH_MEAN_C,
+   int threshold_type=CV_THRESH_BINARY,
+   int block_size=3,
+   double param1=5 ) */
 
 /****************************************************************************************\
 *                                     Drawing                                 *
