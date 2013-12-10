@@ -409,7 +409,7 @@ func Sub(src, src2, dst, mask *IplImage){
 func Divide(src, src2, dst *IplImage, scale float64) {
 	C.cvDiv(unsafe.Pointer(src), unsafe.Pointer(src2),  unsafe.Pointer(dst), C.double(scale))
 }
-//CVAPI(void) cvDiv( const CvArr* src, const CvArr* src2, CvArr* dst, scale double);
+//CVAPI(void) cvDiv( const CvArpr* src, const CvArr* src2, CvArr* dst, scale double);
 
 func ConvertScale(src, dest *IplImage, scale, shift float64){
 	C.cvConvertScale(unsafe.Pointer(src), unsafe.Pointer(dest), C.double(scale), C.double(shift))
@@ -506,17 +506,25 @@ func FindContours(img *IplImage,mode int, method int, offset *Point )(Contours,i
 }
 
 
-func ConvexityDefects(con Contours, index int) (*Seq, int) {
+func ConvexityDefects(con Contours, index int) ([]float64, int) {
 	// Get xopointer to CvContour in CvSeq
 	cur := (*C.CvSeq)(unsafe.Pointer(con.elements[index])) //getSeqElem(con.seq, index)
+	// Find convex hull of selected contour
 	seq := C.cvConvexHull2(unsafe.Pointer(cur), unsafe.Pointer(nil), 
 		C.CV_CLOCKWISE, C.int(0))
-	seq2 := (*Seq)(C.cvConvexityDefects(unsafe.Pointer(cur),unsafe.Pointer(seq),
+	// Calculate defects of convex hull and contour
+	seq2 := (*C.CvSeq)(C.cvConvexityDefects(unsafe.Pointer(cur),unsafe.Pointer(seq),
 		(*C.CvMemStorage)(nil)))
-	count := 0
+	// Determine the total number of defects
 	tmp := (*C.struct_CvSeq)(unsafe.Pointer(seq2))
-	for ; tmp != nil; tmp=tmp.h_next {	count++ }
-	return seq2,count
+	total := int(tmp.total)
+	// Iterate through cvSeq and convert to Go Slice
+	var defects []float64
+	for i := 0; i<total; i++ {
+		ep := (*C.CvConvexityDefect)(unsafe.Pointer(C.cvGetSeqElem(seq2, C.int(i))))
+		defects = append(defects, float64(C.float((*ep).depth)))
+	}
+	return defects,total
 }
 
 
@@ -596,8 +604,9 @@ func Moments(src *IplImage, binary int)(m CvMoments, hu CvHuMoments){
 	return m,hu;
 }
 
-// cvThreshold(const CvArr* src, CvArr* dst, double threshold, double max_value, int threshold_type)
-
+/****************************************************************************************\
+*                                     Threshold                                 *
+\****************************************************************************************/
 const (
 	CV_THRESH_BINARY     = int(C.CV_THRESH_BINARY)
 	CV_THRESH_BINARY_INV = int(C.CV_THRESH_BINARY_INV)
@@ -606,7 +615,7 @@ const (
 	CV_THRESH_TOZERO_INV = int(C.CV_THRESH_TOZERO_INV)
 )
 
-
+// cvThreshold(const CvArr* src, CvArr* dst, double threshold, double max_value, int threshold_type)
 func Threshold(src, dst *IplImage, threshold, max_value float64, threshold_type int) float64{
 	ret := C.cvThreshold(unsafe.Pointer(src), unsafe.Pointer(dst),
 		C.double(threshold), C.double(max_value), C.int(threshold_type))
