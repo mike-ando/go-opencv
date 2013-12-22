@@ -519,10 +519,10 @@ func ConvexityDefects(con Contours, index int) ([]float64, int) {
 	tmp := (*C.struct_CvSeq)(unsafe.Pointer(seq2))
 	total := int(tmp.total)
 	// Iterate through cvSeq and convert to Go Slice
-	var defects []float64
+	defects := make([]float64, total)
 	for i := 0; i<total; i++ {
 		ep := (*C.CvConvexityDefect)(unsafe.Pointer(C.cvGetSeqElem(seq2, C.int(i))))
-		defects = append(defects, float64(C.float((*ep).depth)))
+		defects[i] = float64(C.float((*ep).depth))
 	}
 	return defects,total
 }
