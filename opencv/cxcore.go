@@ -505,6 +505,20 @@ func FindContours(img *IplImage,mode int, method int, offset *Point )(Contours,i
 	return con, int(numFound)
 }
 
+func ConvexArea(con Contours, index int) float64 {
+	// Get xopointer to CvContour in CvSeq
+	cur := (*C.CvSeq)(unsafe.Pointer(con.elements[index])) //getSeqElem(con.seq, index)
+	// Get convex hull sequence
+	seq := C.cvConvexHull2(unsafe.Pointer(cur), unsafe.Pointer(nil), 
+		C.CV_CLOCKWISE, C.int(0))
+	// Create default slice which is whole contour
+	var whole C.CvSlice
+	whole.start_index = 0
+	whole.end_index = CV_WHOLE_SEQ_END_INDEX
+	area := C.cvContourArea(unsafe.Pointer(seq), whole, 0)
+	return float64(area)
+}
+
 
 func ConvexityDefects(con Contours, index int) ([]float64, int) {
 	// Get xopointer to CvContour in CvSeq
