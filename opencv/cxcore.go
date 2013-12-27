@@ -505,6 +505,12 @@ func FindContours(img *IplImage,mode int, method int, offset *Point )(Contours,i
 	return con, int(numFound)
 }
 
+/*CVAPI(int)  cvFindContours( CvArr* image, CvMemStorage* storage, CvSeq** first_contour,
+	int header_size CV_DEFAULT(sizeof(CvContour)),
+	int mode CV_DEFAULT(CV_RETR_LIST),
+	int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
+	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
+
 func ConvexArea(con Contours, index int) float64 {
 	// Get xopointer to CvContour in CvSeq
 	cur := (*C.CvSeq)(unsafe.Pointer(con.elements[index])) //getSeqElem(con.seq, index)
@@ -541,12 +547,6 @@ func ConvexityDefects(con Contours, index int) ([]float64, int) {
 	return defects,total
 }
 
-
-/*CVAPI(int)  cvFindContours( CvArr* image, CvMemStorage* storage, CvSeq** first_contour,
-	int header_size CV_DEFAULT(sizeof(CvContour)),
-	int mode CV_DEFAULT(CV_RETR_LIST),
-	int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
-	CvPoint offset CV_DEFAULT(cvPoint(0,0)));*/
 
 // DrawSingleContour will draw only the indexed contour from a list of contours onto the passed in image
 func DrawSingleContour(img *IplImage, con Contours, index int, extC Scalar, holeC Scalar, thickness int, lineType int, offset *Point){
@@ -587,7 +587,6 @@ func ContourArea(con Contours, index int) float64 {
 	whole.end_index = CV_WHOLE_SEQ_END_INDEX
 	area := C.cvContourArea(unsafe.Pointer(cur), whole, 0)
 	return float64(area)
-
 }
 
 /*CVAPI(double)  cvContourArea( const CvArr* contour,
@@ -650,6 +649,37 @@ func Threshold(src, dst *IplImage, threshold, max_value float64, threshold_type 
    int threshold_type=CV_THRESH_BINARY,
    int block_size=3,
    double param1=5 ) */
+
+
+
+/****************************************************************************************\
+*                                     Hough                                 *
+\****************************************************************************************/
+type Circle struct{
+	x,y,r float64
+}
+
+// HoughCircles finds the circles within an 8-bit, single-channel image
+func HoughCircles(src *IplImage, dp float64, min_dist float64, param1 float64, param2 float64, min_radius int, max_radius int) ([]Circle) {
+	mem := C.cvCreateMemStorage(0)
+	seq := (*C.CvSeq)(C.cvHoughCircles(unsafe.Pointer(src), unsafe.Pointer(mem), C.CV_HOUGH_GRADIENT, C.double(dp), C.double(min_dist), C.double(param1), C.double(param2), C.int(min_radius), C.int(max_radius)))
+	tmp := (*C.struct_CvSeq)(unsafe.Pointer(seq))
+	total := int(tmp.total)
+	circles := make([]Circle, total)
+	for i := 0; i<total; i++ {
+		p := (*[3]C.float)(unsafe.Pointer(C.cvGetSeqElem(seq, C.int(i))))
+		circles[i] = Circle{float64(p[0]), float64(p[1]), float64(p[2])}
+	}
+	C.cvClearMemStorage(mem)
+	C.cvReleaseMemStorage(&mem)
+	return circles
+}
+
+/* CV_IMPL CvSeq*
+	cvHoughCircles( CvArr* src_image, void* circle_storage,
+	int method, double dp, double min_dist,
+	double param1, double param2,
+	int min_radius, int max_radius ) */
 
 /****************************************************************************************\
 *                                     Drawing                                 *
